@@ -7,7 +7,7 @@ st.set_page_config(page_title="SOL Predictor", layout="wide")
 st.title("🚀 Solana (SOL) Price Predictor")
 st.warning("⚠️ Educational tool only. Not financial advice.")
 
-# Live price from CoinGecko (already working)
+# Live price (CoinGecko - already working)
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 @st.cache_data(ttl=60)
@@ -30,21 +30,21 @@ price, change = get_live_price()
 if price is not None:
     st.metric("Current SOL Price (USD)", f"${price:,.2f}", f"{change:+.2f}%" if change is not None else None)
 
-# Historical chart from Binance (fixes the 401 error)
+# Historical chart using CryptoCompare (works in US)
 @st.cache_data(ttl=3600)
 def get_historical():
     try:
-        url = "https://api.binance.com/api/v3/klines"
+        url = "https://min-api.cryptocompare.com/data/v2/histoday"
         params = {
-            "symbol": "SOLUSDT",
-            "interval": "1d",
+            "fsym": "SOL",
+            "tsym": "USD",
             "limit": 730
         }
-        r = requests.get(url, params=params, timeout=15)
+        r = requests.get(url, params=params, headers=HEADERS, timeout=15)
         r.raise_for_status()
-        data = r.json()
-        df = pd.DataFrame(data, columns=["open_time", "open", "high", "low", "close", "volume", "close_time", "quote_asset_volume", "number_of_trades", "taker_buy_base", "taker_buy_quote", "ignore"])
-        df["ds"] = pd.to_datetime(df["open_time"], unit="ms")
+        data = r.json()["Data"]["Data"]
+        df = pd.DataFrame(data)
+        df["ds"] = pd.to_datetime(df["time"], unit="s")
         df["y"] = pd.to_numeric(df["close"])
         return df[["ds", "y"]]
     except Exception as e:
@@ -62,4 +62,4 @@ if not df.empty:
 else:
     st.warning("Could not load historical chart")
 
-st.caption("Live price: CoinGecko • Chart: Binance • Refreshes automatically")
+st.caption("Live price: CoinGecko • Chart: CryptoCompare • Refreshes automatically")
